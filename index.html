@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Alumni Management System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-blue: #1a237e;
+            --secondary-gold: #ffc107;
+            --off-white: #f5f5f5;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--off-white);
+            color: #333;
+        }
+
+        .text-gold { color: var(--secondary-gold); }
+        .bg-blue-900 { background-color: var(--primary-blue); }
+        .text-blue-900 { color: var(--primary-blue); }
+        .border-gold { border-color: var(--secondary-gold); }
+        .hover\:bg-gold-500:hover { background-color: #fdd835; }
+
+        .feature-card {
+            transform: translateY(20px);
+            opacity: 0;
+            transition: transform 0.6s ease-out, opacity 0.6s ease-out;
+        }
+        .feature-card.visible {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        
+        #dashboard-view {
+            display: none;
+        }
+
+        /* Chatbot specific styles */
+        #chatbot-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        
+        #chat-window {
+            width: 350px;
+            height: 450px;
+            transform: scale(0.5);
+            transform-origin: bottom right;
+            opacity: 0;
+            transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+        }
+        #chat-window.visible {
+            transform: scale(1);
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .message {
+            max-width: 85%;
+            padding: 8px 12px;
+            border-radius: 18px;
+            margin-bottom: 10px;
+        }
+        .user-message {
+            background-color: #e2e8f0;
+            color: #333;
+            align-self: flex-end;
+            border-bottom-right-radius: 2px;
+        }
+        .bot-message {
+            background-color: var(--primary-blue);
+            color: white;
+            align-self: flex-start;
+            border-bottom-left-radius: 2px;
+        }
+        .bot-message a {
+            color: var(--secondary-gold);
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            #chat-window {
+                width: 90%;
+                height: 80%;
+                bottom: 5%;
+                right: 5%;
+                transform: scale(1); /* No scaling on mobile to fill more space */
+                transform-origin: bottom center;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navbar -->
+    <nav class="bg-blue-900 text-white fixed w-full z-20 top-0 shadow-lg">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <a href="#" onclick="showHome()" class="text-xl font-bold flex items-center space-x-2 cursor-pointer">
+                <span class="text-gold">&#9733;</span>
+                <span>GradUnity</span>
+            </a>
+            <!-- Desktop Menu -->
+            <ul class="hidden md:flex space-x-8 text-sm font-medium items-center">
+                <li><a href="#features" class="hover:text-gold transition-colors duration-300">Features</a></li>
+                <li><a href="#how-it-works" class="hover:text-gold transition-colors duration-300">How It Works</a></li>
+                <li><a href="#dashboards" class="hover:text-gold transition-colors duration-300">Dashboard Demo</a></li>
+                <li><a href="#value-prop" class="hover:text-gold transition-colors duration-300">Value</a></li>
+                <li><a href="#contact" class="hover:text-gold transition-colors duration-300">Join Us</a></li>
+                <li>
+                    <button id="nav-chat-button" onclick="toggleChatWindow()" class="p-2 rounded-full hover:bg-gold hover:text-blue-900 transition-colors duration-300">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+                            <path d="M4.912 2.809A34.475 34.475 0 0 0 1.25 15.684v1.86a.751.751 0 0 0 .712.713H4.07a2.25 2.25 0 0 1 2.182 1.815 9.72 9.72 0 0 0 6.635 3.12c3.107 0 5.949-1.241 8.04-3.248a35.137 35.137 0 0 0 .61-3.084c.264-1.614.284-3.264.048-4.907a.751.751 0 0 0-.712-.713H17.8a9.721 9.721 0 0 0-6.635-3.12A34.475 34.475 0 0 0 4.912 2.809Z" />
+                        </svg>
+                    </button>
+                </li>
+            </ul>
+            <!-- Mobile Menu Button -->
+            <button id="mobile-menu-button" class="md:hidden p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-inset focus:ring-gold">
+                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+                </svg>
+            </button>
+        </div>
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="hidden md:hidden absolute w-full bg-blue-900 shadow-md">
+            <ul class="flex flex-col space-y-2 p-4 text-center">
+                <li><a href="#features" class="block py-2 hover:bg-blue-800 transition-colors duration-300 rounded-md">Features</a></li>
+                <li><a href="#how-it-works" class="block py-2 hover:bg-blue-800 transition-colors duration-300 rounded-md">How It Works</a></li>
+                <li><a href="#dashboards" class="block py-2 hover:bg-blue-800 transition-colors duration-300 rounded-md">Dashboard Demo</a></li>
+                <li><a href="#value-prop" class="block py-2 hover:bg-blue-800 transition-colors duration-300 rounded-md">Value</a></li>
+                <li><a href="#contact" class="block py-2 hover:bg-blue-800 transition-colors duration-300 rounded-md">Join Us</a></li>
+                <li>
+                    <button onclick="toggleChatWindow()" class="block w-full py-2 hover:bg-blue-800 transition-colors duration-300 rounded-md">
+                        Chat with Alumni Bot
+                    </button>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main id="home-view" class="pt-20">
+        <!-- Hero Section -->
+        <section class="bg-blue-900 text-white py-20 px-4 md:px-8 text-center" style="background-image: url('https://placehold.co/1920x1080/1a237e/ffc107?text=Connecting+Alumni+%26+Students'); background-size: cover; background-position: center; background-blend-mode: multiply;">
+            <div class="max-w-4xl mx-auto py-16 px-6 bg-blue-900 bg-opacity-80 rounded-3xl shadow-2xl backdrop-blur-sm">
+                <h1 class="text-4xl md:text-6xl font-extrabold leading-tight mb-4 animate-fade-in-down">Connecting Alumni, Empowering Students</h1>
+                <p class="text-xl md:text-2xl font-light mb-8">The next generation of alumni management, powered by AI to foster lifelong connections and unlock new opportunities.</p>
+                <div class="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4">
+                    <a href="#contact" class="bg-gold text-blue-900 px-8 py-4 rounded-full font-bold text-lg shadow-lg hover:bg-yellow-400 transition-colors duration-300 transform hover:scale-105">Join as Alumni</a>
+                    <a href="#contact" class="bg-white text-blue-900 px-8 py-4 rounded-full font-bold text-lg shadow-lg hover:bg-gray-200 transition-colors duration-300 transform hover:scale-105">Join as Student</a>
+                    <a href="#" onclick="showDashboard()" class="text-white border-2 border-white px-8 py-4 rounded-full font-bold text-lg hover:bg-white hover:text-blue-900 transition-colors duration-300 transform hover:scale-105">Admin Login</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section id="features" class="py-20 px-4 md:px-8 bg-white">
+            <div class="container mx-auto">
+                <h2 class="text-4xl font-bold text-center text-blue-900 mb-12">Key Features</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                    <!-- Feature Card 1 -->
+                    <div class="feature-card bg-off-white rounded-3xl p-8 shadow-xl text-center">
+                        <div class="h-16 w-16 mx-auto mb-4 bg-blue-900 text-gold rounded-full flex items-center justify-center text-3xl">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-8 h-8">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.824-1.144L14 18M3 18v2h5l-2-2zM12 11a4 4 0 110-8 4 4 0 010 8zm-2 11v-4a2 2 0 012-2h0a2 2 0 012 2v4a2 2 0 01-2 2h0a2 2 0 01-2-2z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2 text-blue-900">Centralized Alumni Database</h3>
+                        <p class="text-sm text-gray-600">Securely store and manage a comprehensive database of alumni information, career paths, and contact details.</p>
+                    </div>
+                    <!-- Feature Card 2 -->
+                    <div class="feature-card bg-off-white rounded-3xl p-8 shadow-xl text-center">
+                        <div class="h-16 w-16 mx-auto mb-4 bg-blue-900 text-gold rounded-full flex items-center justify-center text-3xl">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-8 h-8">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13a2 2 0 00-2-2h-2m-4 0h-4m2 0a2 2 0 002-2V5a2 2 0 00-2-2h-2a2 2 0 00-2 2v4a2 2 0 002 2h2m-4 0a2 2 0 00-2 2v4a2 2 0 002 2h4a2 2 0 002-2v-4a2 2 0 00-2-2h-4" />
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2 text-blue-900">Mentorship & Internship Matching</h3>
+                        <p class="text-sm text-gray-600">AI-powered matching connects students with alumni mentors and internship opportunities based on skills, interests, and career goals.</p>
+                    </div>
+                    <!-- Feature Card 3 -->
+                    <div class="feature-card bg-off-white rounded-3xl p-8 shadow-xl text-center">
+                        <div class="h-16 w-16 mx-auto mb-4 bg-blue-900 text-gold rounded-full flex items-center justify-center text-3xl">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-8 h-8">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2 text-blue-900">Event & AI career Advisor</h3>
+                        <p class="text-sm text-gray-600">EAI-powered platform offering personalized event recommendations and smart career guidance with tailored job & internship suggestions.</p>
+                    </div>
+                    <!-- Feature Card 4 -->
+                    <div class="feature-card bg-off-white rounded-3xl p-8 shadow-xl text-center">
+                        <div class="h-16 w-16 mx-auto mb-4 bg-blue-900 text-gold rounded-full flex items-center justify-center text-3xl">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-8 h-8">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6m10 0v-6a2 2 0 00-2-2h-2a2 2 0 00-2 2v6m4-2h2m-2-2h2m-2-2h2m-2-2h2" />
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2 text-blue-900">AI Analytics & Fundraising</h3>
+                        <p class="text-sm text-gray-600">Leverage AI to gain deep insights into engagement patterns and identify key alumni for targeted fundraising campaigns.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- How It Works Section -->
+        <section id="how-it-works" class="py-20 px-4 md:px-8 bg-blue-900 text-white">
+            <div class="container mx-auto text-center">
+                <h2 class="text-4xl font-bold mb-12">How It Works</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                    <!-- Step 1 -->
+                    <div class="feature-card flex flex-col items-center">
+                        <div class="relative mb-8">
+                            <div class="h-20 w-20 bg-white text-blue-900 rounded-full flex items-center justify-center text-4xl font-bold border-4 border-gold z-10">1</div>
+                            <div class="absolute inset-0 rounded-full border-4 border-gold animate-ping opacity-75"></div>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2">Login</h3>
+                        <p class="text-sm text-gray-300">Quickly sign in with a verified institutional email or social login.</p>
+                    </div>
+                    <!-- Step 2 -->
+                    <div class="feature-card flex flex-col items-center">
+                            <div class="relative mb-8">
+                            <div class="h-20 w-20 bg-white text-blue-900 rounded-full flex items-center justify-center text-4xl font-bold border-4 border-gold z-10">2</div>
+                            <div class="absolute inset-0 rounded-full border-4 border-gold animate-ping opacity-75"></div>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2">Access Dashboard</h3>
+                        <p class="text-sm text-gray-300">Gain instant access to your personalized dashboard with relevant tools and data.</p>
+                    </div>
+                    <!-- Step 3 -->
+                    <div class="feature-card flex flex-col items-center">
+                            <div class="relative mb-8">
+                            <div class="h-20 w-20 bg-white text-blue-900 rounded-full flex items-center justify-center text-4xl font-bold border-4 border-gold z-10">3</div>
+                            <div class="absolute inset-0 rounded-full border-4 border-gold animate-ping opacity-75"></div>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2">Engage</h3>
+                        <p class="text-sm text-gray-300">Connect with peers, find mentors, discover jobs.</p>
+                    </div>
+                    <!-- Step 4 -->
+                    <div class="feature-card flex flex-col items-center">
+                            <div class="relative mb-8">
+                            <div class="h-20 w-20 bg-white text-blue-900 rounded-full flex items-center justify-center text-4xl font-bold border-4 border-gold z-10">4</div>
+                            <div class="absolute inset-0 rounded-full border-4 border-gold animate-ping opacity-75"></div>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2">AI Insights & Growth</h3>
+                        <p class="text-sm text-gray-300">Leverage AI recommendations and analytics to grow your network and career.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Dashboard Demo Section -->
+        <section id="dashboards" class="py-20 px-4 md:px-8 bg-off-white text-center">
+            <div class="container mx-auto">
+                    <h2 class="text-4xl font-bold text-blue-900 mb-12">Dashboard Demo</h2>
+                <p class="text-lg text-gray-600 mb-10">Click the "Admin Login" button to see a preview of a working dashboard.</p>
+                <div class="bg-blue-900 text-white rounded-3xl p-8 shadow-xl max-w-lg mx-auto">
+                    <h3 class="text-2xl font-bold mb-4">Launch the Dashboard</h3>
+                    <p class="text-sm mb-6 text-gray-300">See key metrics and analytics in action.</p>
+                    <button onclick="showDashboard()" class="bg-gold text-blue-900 px-8 py-4 rounded-full font-bold text-lg hover:bg-yellow-400 transition-colors duration-300 transform hover:scale-105">Admin Login</button>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- Value Proposition Section -->
+        <section id="value-prop" class="py-20 px-4 md:px-8 bg-blue-900 text-white">
+            <div class="container mx-auto">
+                <h2 class="text-4xl font-bold text-center mb-12">Our Value Proposition</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
+                    <div class="feature-card flex flex-col items-start space-y-4">
+                        <div class="flex items-center space-x-4">
+                            <div class="h-12 w-12 bg-gold text-blue-900 rounded-full flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5V6a2.25 2.25 0 0 0-2.25-2.25H6a2.25 2.25 0 0 0-2.25 2.25v6h13.5zM12 21h4.5a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25H12M12 21v-4.5a2.25 2.25 0 0 0-2.25-2.25H7.5" />
+                                </svg>
+                            </div>
+                            <h3 class="text-2xl font-bold">Unlocking Career Opportunities</h3>
+                        </div>
+                        <p class="text-gray-300 ml-16">Connect with a network of professionals to find jobs, internships, and invaluable career advice. Our platform turns your alma mater into a lifelong career resource.</p>
+                    </div>
+                    <div class="feature-card flex flex-col items-start space-y-4">
+                        <div class="flex items-center space-x-4">
+                               <div class="h-12 w-12 bg-gold text-blue-900 rounded-full flex items-center justify-center">
+                                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+                                               <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6m6 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                       </svg>
+                               </div>
+                            <h3 class="text-2xl font-bold">Strengthening Community Ties</h3>
+                        </div>
+                        <p class="text-gray-300 ml-16">Foster a vibrant and engaged community where alumni can give back, share expertise, and celebrate successes together, strengthening the institutional bond.</p>
+                    </div>
+                    <div class="feature-card flex flex-col items-start space-y-4">
+                        <div class="flex items-center space-x-4">
+                            <div class="h-12 w-12 bg-gold text-blue-900 rounded-full flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.076 60.076 0 0 1 1.77-5.917L6.878 12.44A2.25 2.25 0 0 1 8.28 11.239L15 4.5m-6.75 6.75 4.99-4.99m0 0 5.163 5.163V15h-3.876a1.125 1.125 0 0 0-.91-.563h-.942c-.41 0-.813.093-1.164.269a2.25 2.25 0 0 0-.91-.563h-.942M7.5 15.75H4.5a2.25 2.25 0 0 1-2.25-2.25V9a2.25 2.25 0 0 1 2.25-2.25h3m6 11.25H9m-6.75-9a2.25 2.25 0 0 0-2.25 2.25V18c0 1.242 1.008 2.25 2.25 2.25h12.25" />
+                                </svg>
+                            </div>
+                            <h3 class="text-2xl font-bold">Driving Fundraising Growth</h3>
+                        </div>
+                        <p class="text-gray-300 ml-16">AI-driven insights help identify high-potential donors and engagement opportunities, boosting your institution's fundraising success and sustainability.</p>
+                    </div>
+                    <div class="feature-card flex flex-col items-start space-y-4">
+                        <div class="flex items-center space-x-4">
+                            <div class="h-12 w-12 bg-gold text-blue-900 rounded-full flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                </svg>
+                            </div>
+                            <h3 class="text-2xl font-bold">Boosting Institutional Reputation</h3>
+                        </div>
+                        <p class="text-gray-300 ml-16">A thriving alumni network enhances your institution's prestige and credibility, attracting top talent and reinforcing its legacy.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Contact/Join Section -->
+        <section id="contact" class="py-20 px-4 md:px-8 bg-off-white">
+            <div class="container mx-auto max-w-2xl">
+                <h2 class="text-4xl font-bold text-center text-blue-900 mb-6">Join Our Growing Community</h2>
+                <p class="text-center text-lg text-gray-600 mb-10">Fill out the form below to get started and a member of our team will contact you shortly.</p>
+                <div class="bg-white p-8 rounded-3xl shadow-xl">
+                    <form id="contact-form" class="space-y-6">
+                        <div>
+                            <label for="name" class="block text-sm font-medium text-blue-900">Full Name</label>
+                            <input type="text" id="name" name="name" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-gold focus:ring focus:ring-gold focus:ring-opacity-50 transition-colors duration-300">
+                        </div>
+                        <div>
+                            <label for="email" class="block text-sm font-medium text-blue-900">Email Address</label>
+                            <input type="email" id="email" name="email" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-gold focus:ring focus:ring-gold focus:ring-opacity-50 transition-colors duration-300">
+                        </div>
+                        <div>
+                            <label for="role" class="block text-sm font-medium text-blue-900">Your Role</label>
+                            <select id="role" name="role" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-gold focus:ring focus:ring-gold focus:ring-opacity-50 transition-colors duration-300">
+                                <option value="" disabled selected>Select an option</option>
+                                <option value="alumni">Alumni</option>
+                                <option value="student">Student</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="w-full py-3 px-4 bg-blue-900 text-white font-bold rounded-full hover:bg-gold hover:text-blue-900 transition-colors duration-300 transform hover:scale-105">Submit Request</button>
+                    </form>
+                    <div id="form-message" class="mt-6 text-center text-green-600 hidden font-bold"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Dashboard View (Initially Hidden) -->
+    <section id="dashboard-view" class="pt-20 bg-gray-100 min-h-screen">
+        <div class="container mx-auto px-4 py-8">
+            <header class="flex flex-col md:flex-row justify-between items-center mb-8">
+                <h1 class="text-3xl md:text-4xl font-bold text-blue-900 mb-4 md:mb-0">Admin Dashboard</h1>
+                <button onclick="showHome()" class="bg-blue-900 text-white px-6 py-2 rounded-full font-bold hover:bg-gold hover:text-blue-900 transition-colors duration-300 transform hover:scale-105">Log Out</button>
+            </header>
+
+            <!-- Dashboard Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white rounded-2xl p-6 shadow-md text-center border border-gold">
+                    <h3 class="text-lg font-bold text-gray-500">Total Alumni</h3>
+                    <p class="text-4xl font-bold text-blue-900">12,450</p>
+                </div>
+                <div class="bg-white rounded-2xl p-6 shadow-md text-center border border-gold">
+                    <h3 class="text-lg font-bold text-gray-500">Active Students</h3>
+                    <p class="text-4xl font-bold text-blue-900">8,120</p>
+                </div>
+                <div class="bg-white rounded-2xl p-6 shadow-md text-center border border-gold">
+                    <h3 class="text-lg font-bold text-gray-500">Mentorship Matches</h3>
+                    <p class="text-4xl font-bold text-blue-900">950</p>
+                </div>
+                <div class="bg-white rounded-2xl p-6 shadow-md text-center border border-gold">
+                    <h3 class="text-lg font-bold text-gray-500">Events Hosted</h3>
+                    <p class="text-4xl font-bold text-blue-900">15</p>
+                </div>
+            </div>
+
+            <!-- Dashboard Charts & Recent Activity -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white rounded-2xl p-6 shadow-md border border-gold">
+                    <h3 class="text-xl font-bold text-blue-900 mb-4">Recent Activity</h3>
+                    <ul class="space-y-4">
+                        <li class="p-4 bg-off-white rounded-xl">
+                            <p class="font-semibold text-blue-900">New Mentorship Match:</p>
+                            <p class="text-sm text-gray-600">Jane Doe mentored John Smith.</p>
+                        </li>
+                        <li class="p-4 bg-off-white rounded-xl">
+                            <p class="font-semibold text-blue-900">New Job Posting:</p>
+                            <p class="text-sm text-gray-600">Google Inc. posted "Software Engineer".</p>
+                        </li>
+                        <li class="p-4 bg-off-white rounded-xl">
+                            <p class="font-semibold text-blue-900">Event Registration:</p>
+                            <p class="text-sm text-gray-600">50 new users registered for "Spring Gala".</p>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-blue-900 text-white py-12 px-4 text-center">
+        <div class="container mx-auto">
+            <p>&copy; 2025 GradUnity. All rights reserved.</p>
+            <!-- <p class="mt-2 text-sm text-gray-400">Powered by AI for the modern university.</p> -->
+        </div>
+    </footer>
+
+    <!-- Chatbot Container -->
+    <div id="chatbot-container">
+        <!-- Chat Window -->
+        <div id="chat-window" class="bg-white rounded-xl shadow-2xl mt-4 hidden">
+            <!-- Chat Header -->
+            <div class="bg-blue-900 text-white p-4 rounded-t-xl flex justify-between items-center">
+                <span class="font-bold">Alumni Bot</span>
+                <button onclick="toggleChatWindow()" class="text-white hover:text-gray-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+                        <path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Chat Messages -->
+            <div id="chat-messages" class="flex-grow p-4 space-y-2 overflow-y-auto">
+                <div class="message bot-message">Hello! I'm your Alumni Bot. How can I help you? I can tell you about our features, how the system works, or our value proposition.</div>
+            </div>
+            
+            <!-- Chat Input -->
+            <div class="p-4 border-t border-gray-200 flex items-center">
+                <input type="text" id="chat-input" placeholder="Type a message..." class="flex-grow p-2 rounded-full bg-gray-100 border-none focus:outline-none text-sm">
+                <button onclick="sendUserMessage()" class="ml-2 bg-blue-900 text-white rounded-full p-2 hover:bg-gold hover:text-blue-900 transition-colors duration-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.493 12a59.769 59.769 0 0 1-18.224 8.875L6 12Z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75V12h5.25" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- JavaScript for interactivity -->
+    <script>
+        const homeView = document.getElementById('home-view');
+        const dashboardView = document.getElementById('dashboard-view');
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const mobileMenu = document.getElementById('mobile-menu');
+        const navLinks = mobileMenu.querySelectorAll('a');
+        const chatWindow = document.getElementById('chat-window');
+        const chatInput = document.getElementById('chat-input');
+        const chatMessages = document.getElementById('chat-messages');
+        const contactForm = document.getElementById('contact-form');
+        const formMessage = document.getElementById('form-message');
+        
+        // Function to show the home page
+        function showHome() {
+            homeView.style.display = 'block';
+            dashboardView.style.display = 'none';
+        }
+
+        // Function to show the dashboard and render the chart
+        function showDashboard() {
+            homeView.style.display = 'none';
+            dashboardView.style.display = 'block';
+        }
+
+        // Add event listeners for mobile menu and form
+        mobileMenuButton.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+        });
+
+        navLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                mobileMenu.classList.add('hidden');
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const observerOptions = {
+                root: null,
+                rootMargin: '0px',
+                threshold: 0.2
+            };
+
+            const observer = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, observerOptions);
+
+            document.querySelectorAll('.feature-card').forEach(card => {
+                observer.observe(card);
+            });
+        });
+
+        contactForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            // In a real application, you would send this data to a server.
+            console.log('Form submitted:', {
+                name: document.getElementById('name').value,
+                email: document.getElementById('email').value,
+                role: document.getElementById('role').value
+            });
+            
+            // Show success message
+            formMessage.textContent = 'Thank you for your interest! We will be in touch shortly.';
+            formMessage.classList.remove('hidden');
+            
+            // Reset form and hide message after a few seconds
+            contactForm.reset();
+            setTimeout(() => {
+                formMessage.classList.add('hidden');
+            }, 5000);
+        });
+
+        // Chatbot functionality
+        function toggleChatWindow() {
+            const chatWindow = document.getElementById('chat-window');
+            chatWindow.classList.toggle('hidden');
+            setTimeout(() => {
+                 chatWindow.classList.toggle('visible');
+            }, 10);
+        }
+
+        async function sendUserMessage() {
+            const userMessage = chatInput.value.trim();
+            if (userMessage === '') return;
+
+            // Display user message
+            const userDiv = document.createElement('div');
+            userDiv.classList.add('message', 'user-message');
+            userDiv.textContent = userMessage;
+            chatMessages.appendChild(userDiv);
+            chatInput.value = '';
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            // Display "typing" indicator
+            const typingDiv = document.createElement('div');
+            typingDiv.classList.add('message', 'bot-message');
+            typingDiv.textContent = 'Alumni Bot is typing...';
+            chatMessages.appendChild(typingDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            // Simple bot logic based on keywords
+            let botResponse = "I'm sorry, I can only provide information about the Alumni Connect platform. Please ask about features, how it works, or our value proposition.";
+
+            if (userMessage.toLowerCase().includes('features')) {
+                botResponse = "Our key features include a centralized alumni database, AI-powered mentorship matching, event and communication tools, and AI analytics for fundraising. You can find more details in the 'Key Features' section.";
+            } else if (userMessage.toLowerCase().includes('how it works') || userMessage.toLowerCase().includes('how it work')) {
+                botResponse = "The process is simple: 1) Log in securely. 2) Access your personalized dashboard. 3) Engage with the community. 4) Use AI insights to grow your network and career. See the 'How It Works' section for more.";
+            } else if (userMessage.toLowerCase().includes('value') || userMessage.toLowerCase().includes('value proposition')) {
+                botResponse = "Our platform provides value by unlocking career opportunities, strengthening community ties, driving fundraising growth, and boosting the institutional reputation. You can read more about this in the 'Value Proposition' section.";
+            } else if (userMessage.toLowerCase().includes('join')) {
+                botResponse = "You can join our community by filling out the form in the 'Join Our Growing Community' section.";
+            }
+
+            // Simulate bot response delay
+            setTimeout(() => {
+                typingDiv.textContent = botResponse;
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }, 1500);
+        }
+
+        // Add event listener for enter key
+        chatInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                sendUserMessage();
+            }
+        });
+    </script>
+</body>
+</html>
